@@ -16,6 +16,8 @@ var (
 	ErrFolderNotFound = errors.New("unable to find folder extension")
 
 	outputFormat = "%s.crx"
+	version      string
+	build        string
 )
 
 func main() {
@@ -33,6 +35,7 @@ func main() {
 
 			fmt.Println(err)
 			parser.WriteHelp(os.Stdout)
+			fmt.Printf("\nBuild information\n  commit: %s\n  date:%s\n", version, build)
 		}
 
 		os.Exit(1)

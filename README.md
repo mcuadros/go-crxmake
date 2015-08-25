@@ -7,14 +7,20 @@ the CRX Package Format [specs](https://developer.chrome.com/extensions/crx)
 Installation
 ------------
 
+### Binaries
 ```
-wget https://github.com/mcuadros/go-crxmake/releases/download/v0.1.0/go-crxmake_v0.1.0_linux_amd64.tar.gz
-tar -xvzf go-crxmake_v0.1.0_linux_amd64.tar.gz
-cp go-crxmake_v0_v0.1.0_linux_amd64/crxmake /usr/local/bin/
+wget https://github.com/mcuadros/go-crxmake/releases/download/v0.1.0/crxmake_v0.1.0_linux_amd64.tar.gz
+tar -xvzf crxmake_v0.1.0_linux_amd64.tar.gz
+cp-crxmake_v0.1.0_linux_amd64/crxmake /usr/local/bin/
 ```
 
 browse the [`releases`](https://github.com/mcuadros/go-crxmake/releases) section to see other archs and versions
 
+
+### From sources
+```
+go get -u github.com/mcuadros/go-crxmake/...
+```
 
 Usage
 -----
