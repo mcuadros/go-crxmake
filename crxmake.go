@@ -1,95 +1,139 @@
-package main
+package crxmake
 
 import (
-	"errors"
+	"archive/zip"
+	"bytes"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/mcuadros/go-crxmake/crxmake"
-
-	"github.com/jessevdk/go-flags"
+	"github.com/dustin/go-humanize"
 )
 
-var (
-	ErrMissingFolder  = errors.New("missing folder extension")
-	ErrFolderNotFound = errors.New("unable to find folder extension")
+var header = []byte{'C', 'r', '2', '4'}
+var version uint32 = 2
 
-	outputFormat = "%s.crx"
-)
+// Builder creates CRX files using as source a Chrome extension folder.
+type Builder struct {
+	Content *bytes.Buffer
+}
 
-func main() {
-	parser := flags.NewParser(nil, flags.Default)
-	cmd, err := parser.AddCommand("crxmake", "", "", &Command{})
-	//it replace the defualt command
-	parser.Command = cmd
+// NewBuilder returns a new CRX Builder
+func NewBuilder() *Builder {
+	return &Builder{
+		Content: new(bytes.Buffer),
+	}
+}
 
-	_, err = parser.Parse()
-	if err != nil {
-		if err, ok := err.(*flags.Error); ok {
-			if err.Type == flags.ErrHelp {
-				os.Exit(0)
-			}
+// BuildZip loades the given folder and include all the files on the zip.
+func (b *Builder) BuildZip(folder string) error {
+	w := zip.NewWriter(b.Content)
 
-			fmt.Println(err)
-			parser.WriteHelp(os.Stdout)
+	defer w.Close()
+	return filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
 
-		os.Exit(1)
-	}
+		filename, _ := filepath.Rel(folder, path)
+		if info.IsDir() {
+			return nil
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		header.Name = filename
+		dst, err := w.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		src, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+
+		bytes, err := io.Copy(dst, src)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Included %q %s\n", filename, humanize.Bytes(uint64(bytes)))
+		return nil
+	})
 }
 
-type Command struct {
-	Options struct {
-		Folder string `positional-arg-name:"folder" description:"folder where the extension is located."`
-		Output string `positional-arg-name:"output" description:"output file name"`
-	} `positional-args:"yes"`
-}
-
-func (c *Command) Execute(args []string) error {
-	if err := c.init(); err != nil {
+// WriteToFile writes the generated CRX file.
+func (b *Builder) WriteToFile(w io.Writer) error {
+	if _, err := w.Write(header); err != nil {
 		return err
 	}
 
-	b := crxmake.NewBuilder()
+	if err := binary.Write(w, binary.LittleEndian, version); err != nil {
+		return err
+	}
 
-	fmt.Printf("Reading files from %q\n", c.Options.Folder)
-	err := b.BuildZip(c.Options.Folder)
+	key, signature, err := b.signContent()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Writing file %q ... ", c.Options.Output)
-	file, err := os.Create(c.Options.Output)
-	if err != nil {
-		fmt.Println("FAIL")
+	if err := binary.Write(w, binary.LittleEndian, uint32(len(key))); err != nil {
+		fmt.Println("key")
 		return err
 	}
 
-	defer file.Close()
-
-	err = b.WriteToFile(file)
-	if err != nil {
-		fmt.Println("FAIL")
+	if err := binary.Write(w, binary.LittleEndian, uint32(len(signature))); err != nil {
 		return err
 	}
 
-	fmt.Println("DONE")
+	if _, err := w.Write(key); err != nil {
+		return err
+	}
+
+	if _, err := w.Write(signature); err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(w, b.Content); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Command) init() error {
-	if c.Options.Folder == "" {
-		return ErrMissingFolder
+func (b *Builder) signContent() (publicKey, signature []byte, err error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return
 	}
 
-	if _, err := os.Stat(c.Options.Folder); err != nil {
-		return ErrFolderNotFound
+	privateKey.Precompute()
+	if err = privateKey.Validate(); err != nil {
+		return
 	}
 
-	if c.Options.Output == "" {
-		c.Options.Output = fmt.Sprintf(outputFormat, filepath.Base(c.Options.Folder))
+	publicKey, err = x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return
 	}
 
-	return nil
+	h := crypto.SHA1.New()
+	h.Write(b.Content.Bytes())
+
+	signature, err = rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA1, h.Sum(nil))
+	if err != nil {
+		fmt.Println("foo")
+	}
+
+	return
 }
