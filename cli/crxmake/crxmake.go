@@ -45,8 +45,9 @@ func main() {
 type Command struct {
 	Options struct {
 		Folder string `positional-arg-name:"folder" description:"folder where the extension is located."`
-		Output string `positional-arg-name:"output" description:"output file name"`
+		Output string `positional-arg-name:"output" description:"output file name."`
 	} `positional-args:"yes"`
+	KeyFile string `long:"key-file" description:"private key file."`
 }
 
 func (c *Command) Execute(args []string) error {
@@ -55,6 +56,13 @@ func (c *Command) Execute(args []string) error {
 	}
 
 	b := crxmake.NewBuilder()
+	if c.KeyFile != "" {
+		fmt.Printf("Loading key %q\n", c.KeyFile)
+		err := b.LoadKeyFile(c.KeyFile)
+		if err != nil {
+			return err
+		}
+	}
 
 	fmt.Printf("Reading files from %q\n", c.Options.Folder)
 	err := b.BuildZip(c.Options.Folder)
