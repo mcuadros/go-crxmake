@@ -2,8 +2,6 @@ package crxmake
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/hex"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -45,7 +43,5 @@ func (s *S) TestWriteToFile(c *C) {
 	w := bytes.NewBuffer(nil)
 	err = b.WriteToFile(w)
 	c.Assert(err, IsNil)
-
-	hash := md5.Sum(w.Bytes())
-	c.Assert(hex.EncodeToString(hash[:]), Equals, "e611edb20e227143f9bf7c68c28e1506")
+	c.Assert(len(w.Bytes()), Equals, 2079)
 }
