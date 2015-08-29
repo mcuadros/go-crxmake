@@ -1,8 +1,8 @@
 go-crxmake [![Build Status](https://travis-ci.org/mcuadros/go-crxmake.svg?branch=master)](https://travis-ci.org/mcuadros/go-crxmake) [![Latest Stable Version](http://img.shields.io/github/release/mcuadros/go-crxmake.svg?style=flat)](https://github.com/mcuadros/go-crxmake/releases)
 ==============================
 
-Tool for building Chrome/Chromium extensions from a extension folder. Following
-the CRX Package Format [specs](https://developer.chrome.com/extensions/crx)
+Tool for building Chrome/Chromium extensions from a extension folder **without any dependency**. Following
+the CRX Package Format [specs](https://developer.chrome.com/extensions/crx). 
 
 Installation
 ------------
