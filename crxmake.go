@@ -50,12 +50,12 @@ func (b *Builder) LoadKeyFile(pemFile string) error {
 		return errors.New("key not found")
 	}
 
-	r, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	r, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return err
 	}
 
-	b.PrivateKey = r
+	b.PrivateKey = r.(*rsa.PrivateKey)
 	return nil
 }
 
@@ -122,13 +122,13 @@ func (b *Builder) generateKeyIfNeeded() error {
 	}
 
 	var err error
-	b.PrivateKey, err = rsa.GenerateKey(rand.Reader, 1024)
+	b.PrivateKey, err = rsa.GenerateKey(rand.Reader, 2048)
 
 	return err
 }
 
 func (b *Builder) saveKeyFile(file io.Writer) (int, error) {
-	bytes := x509.MarshalPKCS1PrivateKey(b.PrivateKey)
+	bytes, _ := x509.MarshalPKCS8PrivateKey(b.PrivateKey)
 	block := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: bytes,
